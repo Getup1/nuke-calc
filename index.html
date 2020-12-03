@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>NukeOps Planner</title>
+		<script src="./prices.js"></script>
+		<script src="./calc.js"></script>
+		<style>
+html, body {
+	padding: 0;
+	margin: 0;
+	overflow: hidden;
+}
+
+div.column {
+	padding: 0.5em;
+	margin: 0;
+	float: left;
+	min-width: calc(33vw - 1em);
+	max-height: calc(100vh - 1em);
+	overflow-y: auto;
+}
+
+textarea {
+	width: 100%;
+}
+		</style>
+	</head>
+	<body>
+		<div class="column">Search: <input id="search_box" type="text" oninput="redraw_shop()"><div id="available_list"></div></div>
+		<div class="column" id="bought_list"><h3>Bought items</h3></div>
+		<div class="column" id="crystals_panel">
+			<h3>Telecrystals</h3>
+			<label for="tcam">TCs amount: </label><input id="tcam" name="tcam" type="number" value="220" min="0"><br />
+			Spent: <span id="tcspent">0</span><br />
+			Available: <span id="tcavailable">0</span><br />
+			<h3>Save</h3>
+			<textarea id="savearea"></textarea><br />
+			<a href="#" onclick="savearea.value = btoa(JSON.stringify(STATE))">Save</a>
+			<a href="#" onclick="if(savearea.value) STATE = JSON.parse(atob(savearea.value)); redraw_bought_items()">Load</a>
+		</div>
+		<script>
+const available_list = document.getElementById("available_list");
+const bought_list = document.getElementById("bought_list");
+const tcam = document.getElementById("tcam");
+const tcspent = document.getElementById("tcspent");
+const tcavailable = document.getElementById("tcavailable");
+const savearea = document.getElementById("savearea");
+const search_box = document.getElementById("search_box");
+
+redraw_shop();
+redraw_bought_items();
+
+function redraw_shop() {
+	available_list.textContent = "";
+	for(let category in PRICES) {
+		available_list.innerHTML += `<h3>${category}</h3>`;
+		let newList = document.createElement("ul");
+		for(let I in PRICES[category])
+			if(!search_box.value || PRICES[category][I].name.toLowerCase().includes(search_box.value.toLowerCase()))
+				newList.innerHTML += `<li>${PRICES[category][I].name} (${PRICES[category][I].cost}), <a href="#" onclick="buy_item('${category}', '${I}'); redraw_bought_items()">buy</a></li>`;
+		available_list.appendChild(newList);
+	}
+}
+
+function redraw_bought_items() {
+	bought_list.innerHTML = "<h3>Bought items</h3>";
+	let itemList = document.createElement("ul");
+	for(let i = 0; i < STATE.bought_items.length; i++) {
+		let subst = `<li>${STATE.bought_items[i].name} (${STATE.bought_items[i].cost}) `;
+		for(let op = 0; op < STATE.operatives.length; op++)
+			subst += `<a onclick="give_item(${op}, ${i}); redraw_bought_items()" href="#">${op + 1}</a> `;
+		itemList.innerHTML += `${subst}<a href="#" onclick="remove_item(${i}); redraw_bought_items()">&times;</a></li>`;
+	}
+	bought_list.appendChild(itemList);
+	// draw ops
+	for(let i = 0; i < STATE.operatives.length; i++) {
+		bought_list.innerHTML += `<h3>${STATE.operatives[i].name} <a href="#" onclick="remove_operative(${i}); redraw_bought_items()">&times;</a></h3>`;
+		let opList = document.createElement("ul");
+		for(let item = 0; item < STATE.operatives[i].stash.length; item++) {
+			opList.innerHTML += `<li>${STATE.operatives[i].stash[item].name} <a href="#" onclick="take_item(${i}, ${item}); redraw_bought_items()">&uarr;</a></li>`;
+		}
+		bought_list.appendChild(opList);
+	}
+
+	bought_list.innerHTML += "<a href=\"#\" onclick=\"add_operative(); redraw_bought_items()\">add operative...</a>";
+	tcspent.innerText = STATE.crystals_spent;
+	let left_tc = parseInt(tcam.value) - STATE.crystals_spent;
+	tcavailable.innerText = left_tc;
+	if(left_tc < 0)
+		tcavailable.style.color = "red";
+	else
+		tcavailable.style.color = "black";
+}
+
+
+		</script>
+	</body>
+</html>
